@@ -8,7 +8,6 @@
 #![no_std] // don't link the Rust standard library
 #![no_main] // disable all Rust-level entry points
 
-
 extern crate alloc;
 
 #[macro_use]
@@ -23,7 +22,6 @@ use multiboot::MultibootInfo;
 use vga::TerminalWriter;
 
 use core::{arch::global_asm, panic::PanicInfo};
-
 
 #[global_allocator]
 static ALLOC: allocator::Allocator = allocator::Allocator::new();
@@ -53,29 +51,29 @@ pub unsafe extern "C" fn kernel_main(_multiboot_magic: u32, info: *const Multibo
 
     {
         let mut v = Vec::new();
-        const NUM_ALLCOATIONS: usize = 10;
-        //Allocating a bunch of shit
-        for i in 1..NUM_ALLCOATIONS {
+        const NUM_ALLOCATIONS: usize = 10;
+        // Allocating a bunch of shit
+        for i in 1..NUM_ALLOCATIONS {
             let mut v2 = Vec::new();
-            for j in 0..i{
+            for j in 0..i {
                 v2.push(j);
             }
             v.push(v2);
         }
 
         // Creating holes in allocations
-        for i in (0..NUM_ALLCOATIONS - 1).filter(|x| (x % 2) == 0).rev() {
-            let len = v.len() = 1;
+        for i in (0..NUM_ALLOCATIONS - 1).filter(|x| (x % 2) == 0).rev() {
+            let len = v.len() - 1;
             v.swap(len, i);
             v.pop();
         }
 
-        //alloc and dealloc again
+        // alloc and dealloc again
         {
             let mut v = Vec::new();
-            for i in 1..NUM_ALLCOATIONS {
+            for i in 1..NUM_ALLOCATIONS {
                 let mut v2 = Vec::new();
-                for j in0..1 {
+                for j in 0..i {
                     v2.push(j);
                 }
                 v.push(v2);
@@ -83,25 +81,22 @@ pub unsafe extern "C" fn kernel_main(_multiboot_magic: u32, info: *const Multibo
         }
 
         println!("Pre-dealloc");
+        allocator::print_all_free_segments(ALLOC.first_free.load(Ordering::Relaxed));
 
-allocator::print_all_free_segments(ALLOC.first_free.load(Ordering::Relaxed));
-
-        //Checking for memory corruption
+        // Checking for memory corruption
         for elem in v {
-            for (i, item) in elem.into_iter().enumarate() {
+            for (i, item) in elem.into_iter().enumerate() {
                 assert_eq!(i, item);
             }
         }
     }
 
     println!("Post-dealloc");
-
-allocator::print_all_free_segments(ALLOC.first_free.load(Ordering::Relaxed));
+    allocator::print_all_free_segments(ALLOC.first_free.load(Ordering::Relaxed));
     assert_eq!(*ALLOC.first_free.load(Ordering::Relaxed), initial_state);
 
-    let v = vec![1,2,3,4,5];
+    let v = vec![1, 2, 3, 4, 5];
     println!("{:?}", v);
-
 
     unsafe {
         multiboot::print_mmap_sections(info);
@@ -112,7 +107,7 @@ allocator::print_all_free_segments(ALLOC.first_free.load(Ordering::Relaxed));
 
 /// This function is called on panic.
 #[panic_handler]
-fn panic(_info: &PanicInfo) -> ! {
+fn panic(panic_info: &PanicInfo) -> ! {
     if let Some(args) = panic_info.message() {
         println!("{}", args);
     } else {
